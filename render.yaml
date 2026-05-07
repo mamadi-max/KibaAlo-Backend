@@ -1,0 +1,60 @@
+# render.yaml — Configuration de déploiement KibaAlo sur Render.com
+# Documentation: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: kibaalo-backend
+    env: node
+    region: frankfurt      # Frankfurt est le plus proche de l'Afrique de l'Ouest
+    plan: free             # Gratuit (512MB RAM, dort après 15min d'inactivité)
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true       # Déploiement auto à chaque push GitHub
+
+    envVars:
+      # ── Supabase ──────────────────────────────────────────
+      - key: SUPABASE_URL
+        sync: false        # À saisir manuellement dans Render Dashboard
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+
+      # ── JWT ───────────────────────────────────────────────
+      - key: JWT_SECRET
+        generateValue: true  # Render génère une clé aléatoire sécurisée
+      - key: JWT_EXPIRES_IN
+        value: 7d
+
+      # ── Serveur ───────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        value: https://kibaalo.vercel.app  # Remplacez par votre URL Vercel
+
+      # ── Livraison ─────────────────────────────────────────
+      - key: MAX_DELIVERY_RADIUS_KM
+        value: "15"
+
+      # ── Paiement (à configurer manuellement) ──────────────
+      - key: ORANGE_MONEY_CLIENT_ID
+        sync: false
+      - key: ORANGE_MONEY_CLIENT_SECRET
+        sync: false
+      - key: MOOV_MONEY_TOKEN
+        sync: false
+
+      # ── SMS (Africa's Talking) ────────────────────────────
+      - key: AFRICAS_TALKING_API_KEY
+        sync: false
+      - key: AFRICAS_TALKING_USERNAME
+        sync: false
+
+      # ── Images (Cloudinary) ───────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

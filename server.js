@@ -221,10 +221,13 @@ server.listen(PORT, () => {
   console.log('  🇧🇫  KibaAlo API — Livraison & Services     ');
   console.log('  🇳🇪  Burkina Faso & Niger                   ');
   console.log('  ─────────────────────────────────────────────');
-  console.log(`  🚀  Serveur: http://localhost:${PORT}`);
-  console.log(`  📖  Docs:    http://localhost:${PORT}/api`);
-  console.log(`  💚  Santé:   http://localhost:${PORT}/health`);
-  console.log(`  ⚡  Socket:  ws://localhost:${PORT}`);
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+const wsUrl = process.env.RENDER_EXTERNAL_URL?.replace('https', 'wss') || `ws://localhost:${PORT}`;
+
+console.log(`  🚀  Serveur: ${baseUrl}`);
+console.log(`  📖  Docs:    ${baseUrl}/api`);
+console.log(`  💚  Santé:   ${baseUrl}/health`);
+console.log(`  ⚡  Socket:  ${wsUrl}`);
   console.log(`  🌍  Env:     ${process.env.NODE_ENV || 'development'}`);
   console.log('  ─────────────────────────────────────────────');
   console.log('');

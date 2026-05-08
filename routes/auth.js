@@ -40,9 +40,10 @@ router.post('/register', [
   try {
     const { phone, firstName, lastName, email, password, role, country, city, shopName, shopCategory, vehicleType } = req.body;
 
-    // Vérifier unicité du téléphone
+    // ✅ CORRECTION 1 : maybeSingle() au lieu de single()
+    // single() génère une erreur si aucun résultat → crash immédiat
     const { data: existing } = await supabaseAdmin
-      .from('users').select('id').eq('phone', phone).single();
+      .from('users').select('id').eq('phone', phone).maybeSingle();
 
     if (existing) {
       return res.status(409).json({ success: false, message: 'Ce numéro de téléphone est déjà enregistré' });
@@ -63,37 +64,40 @@ router.post('/register', [
       .select()
       .single();
 
-    if (userError) throw userError;
+    if (userError) {
+      console.error('[register] userError:', userError);
+      throw userError;
+    }
 
     // Créer le portefeuille
-    await supabaseAdmin.from('wallets').insert({ user_id: user.id, balance: 0 });
+    const { error: walletError } = await supabaseAdmin
+      .from('wallets').insert({ user_id: user.id, balance: 0 });
+    if (walletError) console.error('[register] walletError:', walletError);
 
     // Profil spécifique au rôle
     if (role === 'livreur') {
-      await supabaseAdmin.from('livreurs').insert({
-        id: user.id,
-        vehicle_type: vehicleType || 'moto'
-      });
+      const { error: livreurError } = await supabaseAdmin
+        .from('livreurs').insert({ id: user.id, vehicle_type: vehicleType || 'moto' });
+      if (livreurError) console.error('[register] livreurError:', livreurError);
     }
 
-    // ==========================================================
-    // CRÉATION AUTOMATIQUE DE LA BOUTIQUE POUR COMMERÇANT
-    // ==========================================================
+    // ✅ CORRECTION 2 : Boutique avec category valide
     if (role === 'commercant' && shopName) {
       const { error: shopError } = await supabaseAdmin
         .from('shops')
         .insert({
           owner_id: user.id,
           name: shopName,
-          category: shopCategory || 'Autre',
-          city: city || 'Ouagadougou',
-          country: country || 'BF',
+          category: shopCategory || 'general', // ✅ 'general' au lieu de 'Autre'
+          city: city,
+          country: country,
           delivery_fee: 500,
           is_active: true
         });
-      
+
       if (shopError) {
-        console.error('Erreur création boutique auto:', shopError);
+        // ✅ CORRECTION 3 : On log l'erreur mais on ne bloque pas l'inscription
+        console.error('[register] shopError:', JSON.stringify(shopError));
       }
     }
 
@@ -107,14 +111,14 @@ router.post('/register', [
 
     const token = signToken(user);
 
-    // Récupérer le shopId si commerçant
+    // ✅ CORRECTION 4 : maybeSingle() pour récupérer le shopId
     let shopId = null;
     if (user.role === 'commercant') {
       const { data: shop } = await supabaseAdmin
         .from('shops')
         .select('id')
         .eq('owner_id', user.id)
-        .single();
+        .maybeSingle(); // ✅ maybeSingle() au lieu de single()
       shopId = shop?.id || null;
     }
 
@@ -127,7 +131,7 @@ router.post('/register', [
     });
 
   } catch (err) {
-    console.error('[register]', err);
+    console.error('[register] ERREUR COMPLÈTE:', JSON.stringify(err));
     res.status(500).json({ success: false, message: 'Erreur serveur lors de l\'inscription' });
   }
 });
@@ -164,7 +168,6 @@ router.post('/login', [
       return res.status(401).json({ success: false, message: 'Numéro de téléphone ou mot de passe incorrect' });
     }
 
-    // Mettre à jour last_seen pour les livreurs
     if (user.role === 'livreur') {
       await supabaseAdmin.from('livreurs')
         .update({ last_seen: new Date().toISOString() })
@@ -189,7 +192,7 @@ router.post('/login', [
 router.get('/me', authenticate, async (req, res) => {
   try {
     const { data: wallet } = await supabaseAdmin
-      .from('wallets').select('balance').eq('user_id', req.user.id).single();
+      .from('wallets').select('balance').eq('user_id', req.user.id).maybeSingle();
 
     const { data: notifCount } = await supabaseAdmin
       .from('notifications')

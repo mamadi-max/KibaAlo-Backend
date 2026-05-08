@@ -215,6 +215,26 @@ router.delete('/:id/products/:productId', authenticate, requireRole('commercant'
   }
 });
 
+// GET /api/shops/my-shop - Récupérer sa propre boutique
+router.get('/my-shop', authenticate, requireRole('commercant'), async (req, res) => {
+  try {
+    const { data: shop, error } = await supabaseAdmin
+      .from('shops')
+      .select('*')
+      .eq('owner_id', req.user.id)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      return res.json({ success: true, data: null });
+    }
+    if (error) throw error;
+
+    res.json({ success: true, data: shop });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erreur chargement boutique' });
+  }
+});
+
 // ─── GET /api/shops/my/dashboard ────────────────────────────
 // Dashboard statistiques pour le commerçant
 router.get('/my/dashboard', authenticate, requireRole('commercant'), async (req, res) => {

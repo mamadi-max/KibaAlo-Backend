@@ -76,15 +76,25 @@ router.post('/register', [
       });
     }
 
-    if (role === 'commercant' && shopName) {
-      await supabaseAdmin.from('shops').insert({
-        owner_id: user.id,
-        name: shopName,
-        category: shopCategory || 'other',
-        city, country,
-        is_open: true
-      });
-    }
+
+// Si c'est un commerçant, créer automatiquement sa boutique
+if (role === 'commercant' && shopName) {
+  const { error: shopError } = await supabaseAdmin
+    .from('shops')
+    .insert({
+      owner_id: user.id,
+      name: shopName,
+      category: shopType || 'Autre',
+      city: city || 'Ouagadougou',
+      country: country || 'BF',
+      delivery_fee: 500,
+      is_active: true
+    });
+    
+  if (shopError) {
+    console.error('Erreur création boutique auto:', shopError);
+  }
+}
 
     // Notification de bienvenue
     await supabaseAdmin.from('notifications').insert({

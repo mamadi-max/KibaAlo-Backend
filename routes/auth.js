@@ -76,25 +76,26 @@ router.post('/register', [
       });
     }
 
-
-// Si c'est un commerçant, créer automatiquement sa boutique
-if (role === 'commercant' && shopName) {
-  const { error: shopError } = await supabaseAdmin
-    .from('shops')
-    .insert({
-      owner_id: user.id,
-      name: shopName,
-      category: shopType || 'Autre',
-      city: city || 'Ouagadougou',
-      country: country || 'BF',
-      delivery_fee: 500,
-      is_active: true
-    });
-    
-  if (shopError) {
-    console.error('Erreur création boutique auto:', shopError);
-  }
-}
+    // ==========================================================
+    // CRÉATION AUTOMATIQUE DE LA BOUTIQUE POUR COMMERÇANT
+    // ==========================================================
+    if (role === 'commercant' && shopName) {
+      const { error: shopError } = await supabaseAdmin
+        .from('shops')
+        .insert({
+          owner_id: user.id,
+          name: shopName,
+          category: shopCategory || 'Autre',
+          city: city || 'Ouagadougou',
+          country: country || 'BF',
+          delivery_fee: 500,
+          is_active: true
+        });
+      
+      if (shopError) {
+        console.error('Erreur création boutique auto:', shopError);
+      }
+    }
 
     // Notification de bienvenue
     await supabaseAdmin.from('notifications').insert({
@@ -106,22 +107,22 @@ if (role === 'commercant' && shopName) {
 
     const token = signToken(user);
 
-// Récupérer le shopId si commerçant
-let shopId = null;
-if (user.role === 'commercant') {
-  const { data: shop } = await supabaseAdmin
-    .from('shops')
-    .select('id')
-    .eq('owner_id', user.id)
-    .single();
-  shopId = shop?.id || null;
-}
+    // Récupérer le shopId si commerçant
+    let shopId = null;
+    if (user.role === 'commercant') {
+      const { data: shop } = await supabaseAdmin
+        .from('shops')
+        .select('id')
+        .eq('owner_id', user.id)
+        .single();
+      shopId = shop?.id || null;
+    }
 
     res.status(201).json({
       success: true,
       message: 'Compte créé avec succès',
       token,
-      user: userPublic(user)
+      user: userPublic(user),
       shopId
     });
 

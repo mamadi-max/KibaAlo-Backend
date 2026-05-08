@@ -130,10 +130,13 @@ router.post('/register', [
       shopId
     });
 
-  } catch (err) {
-    console.error('[register] ERREUR COMPLÈTE:', JSON.stringify(err));
-    res.status(500).json({ success: false, message: 'Erreur serveur lors de l\'inscription' });
-  }
+  } } catch (err) {
+  console.error('[register] ERREUR:', JSON.stringify(err, null, 2));
+  res.status(500).json({ 
+    success: false, 
+    message: err.message || err.details || JSON.stringify(err)  // ← erreur visible dans l'app
+  });
+}
 });
 
 // ─── POST /api/auth/login ───────────────────────────────────

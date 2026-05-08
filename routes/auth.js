@@ -90,16 +90,29 @@ router.post('/register', [
     await supabaseAdmin.from('notifications').insert({
       user_id: user.id,
       type: 'welcome',
-      title: '🎉 Bienvenue sur KibaAlo !',
+      title: 'Bienvenue sur KibaAlo !',
       body: `Bonjour ${firstName} ! Votre compte est créé avec succès.`
     });
 
     const token = signToken(user);
+
+// Récupérer le shopId si commerçant
+let shopId = null;
+if (user.role === 'commercant') {
+  const { data: shop } = await supabaseAdmin
+    .from('shops')
+    .select('id')
+    .eq('owner_id', user.id)
+    .single();
+  shopId = shop?.id || null;
+}
+
     res.status(201).json({
       success: true,
       message: 'Compte créé avec succès',
       token,
       user: userPublic(user)
+      shopId
     });
 
   } catch (err) {

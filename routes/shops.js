@@ -262,6 +262,7 @@ router.get('/my/dashboard', authenticate, requireRole('commercant'), async (req,
     res.json({
       success: true,
       data: {
+        shopId,
         monthRevenue: revenue,
         monthOrders: monthOrders?.length || 0,
         todayOrders: todayOrders?.length || 0,

@@ -480,4 +480,25 @@ router.post('/validate-promo', authenticate, async (req, res) => {
   }
 });
 
+// GET /api/shops/my-shop - Récupérer sa propre boutique (pour commerçant)
+router.get('/my-shop', authenticate, requireRole('commercant'), async (req, res) => {
+  try {
+    const { data: shop, error } = await supabaseAdmin
+      .from('shops')
+      .select('*')
+      .eq('owner_id', req.user.id)
+      .single();
+
+    if (error && error.code === 'PGRST116') {
+      // Pas de boutique trouvée
+      return res.json({ success: true, data: null });
+    }
+    if (error) throw error;
+
+    res.json({ success: true, data: shop });
+  } catch (err) {
+    console.error('[my-shop]', err);
+    res.status(500).json({ success: false, message: 'Erreur chargement boutique' });
+  }
+});
 module.exports = router;

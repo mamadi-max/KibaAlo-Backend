@@ -74,7 +74,7 @@ router.post('/register', [
         email_verify_token: verifyToken,
         email_verify_expiry: verifyExpiry.toISOString(),
         is_email_verified: false,
-      }).select().single();
+      }).select().maybeSingle();
     if (userErr) throw userErr;
 
     // Créer le portefeuille
@@ -322,9 +322,9 @@ router.get('/me', authenticate, async (req, res) => {
 
     let shopId = null;
     if (req.user.role === 'commercant') {
-      const { data: shop } = await supabaseAdmin
-        .from('shops').select('id').eq('owner_id', req.user.id).limit(1).single();
-      shopId = shop?.id || null;
+     const { data: shop } = await supabaseAdmin
+  .from('shops').select('id').eq('owner_id', req.user.id).limit(1).maybeSingle();
+shopId = shop?.id || null;
     }
 
     res.json({

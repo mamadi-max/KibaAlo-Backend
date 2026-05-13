@@ -52,9 +52,6 @@ router.post('/register', [
       vehicleType, vehicleBrand, vehiclePlate,
     } = req.body;
 
-    // 🔍 LOG POUR DEBUG - À SUPPRIMER APRÈS TEST
-    console.log('📝 [DEBUG] Inscription - Données reçues:', { role, shopName, shopCategory, email, firstName });
-
     // Vérifier unicité email
     const { data: existing } = await supabaseAdmin
       .from('users').select('id').eq('email', email.toLowerCase()).single();
@@ -80,14 +77,11 @@ router.post('/register', [
       }).select().single();
     if (userErr) throw userErr;
 
-    console.log('✅ Utilisateur créé:', user.id);
-
     // Créer le portefeuille
     await supabaseAdmin.from('wallets').insert({ user_id: user.id, balance: 0 });
 
     // Profil spécifique au rôle
     let shopId = null;
-    
     if (role === 'livreur') {
       await supabaseAdmin.from('livreurs').insert({
         id: user.id,
@@ -96,44 +90,19 @@ router.post('/register', [
         vehicle_plate: vehiclePlate || null,
         countries: [country],
       });
-      console.log('✅ Profil livreur créé');
     }
 
-    // ==========================================================
-    // CRÉATION BOUTIQUE POUR COMMERÇANT - CORRIGÉE
-    // ==========================================================
-    if (role === 'commercant') {
-      // Valeurs par défaut si le frontend n'envoie pas
-      const boutiqueName = shopName || req.body.shopName || 'Ma Boutique';
-      const boutiqueCategory = shopCategory || req.body.shopCategory || 'food';
-      
-      console.log('🏪 Création boutique pour commerçant:', user.id);
-      console.log('   Nom:', boutiqueName);
-      console.log('   Catégorie:', boutiqueCategory);
-      
-      const { data: shop, error: shopError } = await supabaseAdmin
-        .from('shops')
-        .insert({
-          owner_id: user.id,
-          name: boutiqueName,
-          description: shopDescription || null,
-          category: boutiqueCategory,
-          phone: shopPhone || phone || null,
-          whatsapp: shopWhatsapp || phone || null,
-          city: city || 'Ouagadougou',
-          country: country || 'BF',
-          delivery_fee: 500,
-          is_active: true
-        })
-        .select()
-        .single();
-      
-      if (shopError) {
-        console.error('❌ Erreur création boutique:', shopError.message);
-      } else {
-        console.log('✅ Boutique créée avec succès, ID:', shop.id);
-        shopId = shop?.id || null;
-      }
+    if (role === 'commercant' && shopName) {
+      const { data: shop } = await supabaseAdmin.from('shops').insert({
+        owner_id: user.id,
+        name: shopName,
+        description: shopDescription || null,
+        category: shopCategory || 'other',
+        phone: shopPhone || phone || null,
+        whatsapp: shopWhatsapp || phone || null,
+        city, country,
+      }).select().single();
+      shopId = shop?.id || null;
     }
 
     // Envoyer email de vérification
@@ -148,9 +117,6 @@ router.post('/register', [
     });
 
     const token = signToken(user);
-    
-    console.log('🎉 Inscription terminée avec succès, shopId:', shopId);
-    
     res.status(201).json({
       success: true,
       message: 'Compte créé ! Vérifiez votre email pour l\'activer.',
@@ -161,7 +127,7 @@ router.post('/register', [
     });
 
   } catch (err) {
-    console.error('❌ [register] ERREUR:', err.message);
+    console.error('[register]', err);
     res.status(500).json({ success: false, message: 'Erreur lors de l\'inscription' });
   }
 });
@@ -291,6 +257,7 @@ router.post('/forgot-password', [
     const { data: user } = await supabaseAdmin
       .from('users').select('id, first_name, email').eq('email', email.toLowerCase()).single();
 
+    // Toujours renvoyer succès pour ne pas révéler si l'email existe
     if (!user) {
       return res.json({ success: true, message: 'Si cet email existe, vous recevrez un lien de réinitialisation.' });
     }
@@ -374,6 +341,7 @@ router.get('/me', authenticate, async (req, res) => {
 // ── PUT /api/auth/profile ────────────────────────────────
 router.put('/profile', authenticate, async (req, res) => {
   try {
+    const allowed = ['first_name','last_name','phone','city','address','language','notification_prefs'];
     const updates = {};
     if (req.body.firstName)          updates.first_name         = req.body.firstName;
     if (req.body.lastName)           updates.last_name          = req.body.lastName;
@@ -395,6 +363,7 @@ router.put('/profile', authenticate, async (req, res) => {
 });
 
 // ── POST /api/auth/avatar ────────────────────────────────
+// Upload photo de profil (Cloudinary)
 router.post('/avatar', authenticate, upload.single('avatar'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'Aucun fichier envoyé' });
@@ -432,6 +401,7 @@ router.put('/password', authenticate, [
 });
 
 // ── POST /api/auth/kyc ───────────────────────────────────
+// Soumission des documents d'identité
 router.post('/kyc', authenticate, upload.fields([
   { name: 'id_front', maxCount: 1 },
   { name: 'id_back',  maxCount: 1 },
@@ -460,6 +430,7 @@ router.post('/kyc', authenticate, upload.fields([
     const { data: u } = await supabaseAdmin.from('users').select('email, first_name').eq('id', req.user.id).single();
     await EmailService.sendKycSubmitted(u.email, u.first_name);
 
+    // Notifier les admins
     await supabaseAdmin.from('notifications').insert({
       user_id: req.user.id,
       type: 'kyc_submitted',

@@ -225,8 +225,8 @@ router.post('/login', [
     let shopId = null;
     if (user.role === 'commercant') {
       const { data: shop } = await supabaseAdmin
-        .from('shops').select('id').eq('owner_id', user.id).limit(1).single();
-      shopId = shop?.id || null;
+  .from('shops').select('id').eq('owner_id', user.id).limit(1).maybeSingle();
+shopId = shop?.id || null;
     }
 
     // Solde du portefeuille

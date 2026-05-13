@@ -93,7 +93,7 @@ router.post('/register', [
     }
 
     if (role === 'commercant' && shopName) {
-      const { data: shop } = await supabaseAdmin.from('shops').insert({
+      const { data: shop, error: shopErr } = await supabaseAdmin.from('shops').insert({
         owner_id: user.id,
         name: shopName,
         description: shopDescription || null,
@@ -102,6 +102,7 @@ router.post('/register', [
         whatsapp: shopWhatsapp || phone || null,
         city, country,
       }).select().single();
+      if (shopErr) console.error('[register] Erreur boutique:', shopErr);
       shopId = shop?.id || null;
     }
 
